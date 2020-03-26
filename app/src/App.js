@@ -13,7 +13,7 @@ const App = () => {
     const data = new FormData();
     data.append('data', cardImage, `image.png`);
 
-    const response = await Axios.post('/metrics', data);
+    const response = await Axios.post('https://image-quality-backend.herokuapp.com/metrics', data);
 
     console.log(response);
   }
