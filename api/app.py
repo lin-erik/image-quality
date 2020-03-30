@@ -17,7 +17,7 @@ def get_metrics():
     # The radius that we plan on applying Gaussian Blur
     radius = (19, 19)
     # Apply Gaussian Blur to image
-    blurred = cv2.GaussianBlur(gray, radius, 0)
+    blurred = cv2.GaussianBlur(image, radius, 0)
     # Convert blurred to grayscale
     gray = cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
     # Applies laplacian to grayscale image and performs
