@@ -87,57 +87,81 @@ export const Camera = ({ onCapture, onClear }) => {
   }
   
   useEffect(() => {
-    if (!isVideoPlaying && !videoRef.current) return;
-
     const CV = window.cv;
     let timer;
 
-    if (!isCanvasEmpty) return clearTimeout(timer);
+    if ((!isVideoPlaying && !videoRef.current) || !isCanvasEmpty) return clearTimeout(timer);
 
+    const delay = 250;
+    const blurThreshold = 2;
+    const minValThreshold = 10;
+    const maxValThreshold = 250;
+    // The radius that we plan on applying Gaussian Blur
+    const size = new CV.Size(19, 19)
+
+    // Let OpenCV know where our video source is (webcam)
     const capture = new CV.VideoCapture(videoRef.current);
+    // Create Mat with same properties as video source
+    // CV_8UC4 stands for unsigned 8-bit (8U) with 4 color channels (C4) 
     let frame = new CV.Mat(videoRef.current.videoHeight, videoRef.current.videoWidth, CV.CV_8UC4);
-    capture.read(frame);
 
     const processVideo = () => {
-      let gray = new CV.Mat();
-      let laplacian = new CV.Mat();
-      let blurred = new CV.Mat();
+        // Initialize Mat, a primitive OpenCV data structure
+        // that's basically a multi-dimensional dense array
+        // for each of our image pre-processing outputs
+        let grayscale = new CV.Mat();
+        let laplacian = new CV.Mat();
+        let blurred = new CV.Mat();
+        // Mostly used as an image container in our case
 
-      capture.read(frame);
+        // Reads the current frame and updates
+        capture.read(frame);
 
-      CV.cvtColor(frame, gray, CV.COLOR_BGR2GRAY);
-      CV.Laplacian(gray, laplacian, CV.CV_64F);
+        // Apply Gaussian Blur to grayscale image, outputs to blurred
+        CV.GaussianBlur(frame, blurred, size, 0);
+        // Converts our frame to grayscale, outputs to grayscale
+        // COLOR_BGR2GRAY converts between RGB/BGR and grayscale
+        CV.cvtColor(blurred, grayscale, CV.COLOR_BGR2GRAY);
 
-      let mean = new CV.Mat();
-      let stdDev = new CV.Mat();
-      CV.meanStdDev(laplacian, mean, stdDev);
-      const deviation = Math.pow(stdDev.doubleAt(0, 0), 2);
+        // Applies Laplacian to grayscale image, outputs to laplacian
+        // The image created will be CV_64F (shorthand for CV_64FC1)
+        // Single color element with 1 channel (64F)
+        CV.Laplacian(grayscale, laplacian, CV.CV_64F);
 
-      const size = new CV.Size(19, 19)
-      CV.GaussianBlur(gray, blurred, size, 0);
+        let mean = new CV.Mat();
+        let stdDev = new CV.Mat();
+        // meanStdDev used to calculate deviation in laplacian image
+        CV.meanStdDev(laplacian, mean, stdDev);
+        // Here we calculate our variance
+        const variance = Math.pow(stdDev.doubleAt(0, 0), 2);
 
-      const { minVal, maxVal } = CV.minMaxLoc(blurred);
-      setLaplace(deviation);
-      setMin(minVal);
-      setMax(maxVal);
+        // Find least brightest region (minVal) and brightest region (maxVal)
+        const { minVal, maxVal } = CV.minMaxLoc(grayscale);
+        setLaplace(variance);
+        setMin(minVal);
+        setMax(maxVal);
 
-      if (deviation < 100) {
-        setBlurry(true);
-      } else {
-        setBlurry(false);
-      }
+        if (variance < blurThreshold) {
+            setBlurry(true);
+        } else {
+            setBlurry(false);
+        }
 
-      if (maxVal >= 250 && minVal >= 10) {
-        setGlare(true);
-      } else {
-        setGlare(false);
-      }
+        if (maxVal >= maxValThreshold && minVal >= minValThreshold) {
+            setGlare(true);
+        } else {
+            setGlare(false);
+        }
 
-      let delay = 500;
-      timer = setTimeout(processVideo, delay);
+        // Have to delete all Mat arrays or there'll be trouble
+        grayscale.delete();
+        laplacian.delete();
+        blurred.delete();
+        mean.delete();
+        stdDev.delete();
     }
 
-    processVideo();
+    timer = setInterval(processVideo, delay);
 
     return () => {
       clearTimeout(timer);
