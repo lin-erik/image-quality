@@ -117,9 +117,9 @@ export const Camera = ({ onCapture, onClear }) => {
         // Reads the current frame and updates
         capture.read(frame);
 
-        // Apply Gaussian Blur to grayscale image, outputs to blurred
+        // Apply Gaussian Blur to frame, outputs to blurred
         CV.GaussianBlur(frame, blurred, size, 0);
-        // Converts our frame to grayscale, outputs to grayscale
+        // Converts blurred to grayscale, outputs to grayscale
         // COLOR_BGR2GRAY converts between RGB/BGR and grayscale
         CV.cvtColor(blurred, grayscale, CV.COLOR_BGR2GRAY);
 
